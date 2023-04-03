@@ -15,11 +15,7 @@ Image * getImage(const char *source_file_name)
     printText(&src);
 
 //add check signature
-    // Image * image = imageCtor(src.buf_length);
-
-    Image * image = (Image *)calloc(1, sizeof(Image));
-    image->length = (src.buf_length - sign_len)/sizeof(int);
-    image->pixels = (pixel *)calloc(image->length, sizeof(pixel));
+    Image * image = imageCtor(src.buf_length);
 
     // DBG_OUT;
     for (int counter = 0; counter < image->length; counter++)
@@ -38,18 +34,20 @@ Image * getImage(const char *source_file_name)
 Image * imageCtor(size_t buf_len)
 {
     Image * image = (Image *)calloc(1, sizeof(Image));
-    image->length = (buf_len - sign_len)/sizeof(int);
+    image->length_in_chars = buf_len;
+    image->length = (buf_len - (sign_len + 2) )/sizeof(int);
     image->pixels = (pixel *)calloc(image->length, sizeof(pixel));
 
+#ifdef DEBUG
     printf("%d\n", image->length);
-    // sleep(1);
-
+    sleep(1);
+#endif
     return image;
 };
 
 int imagePrint(Image *image)
 {
-    for (int counter = 0; counter < image->length; counter++)
+    for (size_t counter = 0; counter < image->length; counter++)
     {
         printf("(%d %d %d %d)\n", 
         image->pixels[counter].r, image->pixels[counter].g, 
@@ -68,10 +66,44 @@ int imageDtor(Image *image)
 
 Image * alpha_blend(Image *front, Image *back, int front_shift)
 {
-    // Image *result = (Image *)calloc(1, sizeof(Image));
-
     ASSERT(front->length > back->length);
-    Image * result = imageCtor(back->length);
+
+    Image * result = imageCtor(back->length_in_chars);
+
+    for (size_t counter = 0; counter < result->length; counter++)
+    {
+
+        // if (counter >= front_shift && (counter - front_shift) < front->length )
+        // {
+        //     // result->pixels[counter].r = (front->pixels[counter].r*front->pixels[counter].a + 
+        //     //                             back->pixels[counter].r*(255 - front->pixels[counter].a))/255;
+        //     // result->pixels[counter].g = (front->pixels[counter].g*front->pixels[counter].a + 
+        //     //                             back->pixels[counter].g*(255 - front->pixels[counter].a))/255;
+        //     // result->pixels[counter].b = (front->pixels[counter].b*front->pixels[counter].a + 
+        //     //                             back->pixels[counter].b*(255 - front->pixels[counter].a))/255;
+        //     // result->pixels[counter].a = (front->pixels[counter].a*front->pixels[counter].a + 
+        //     //                             back->pixels[counter].a*(255 - front->pixels[counter].a))/255;
+        //     result->pixels[counter].r = 100;
+        //     result->pixels[counter].g = 100;
+        //     result->pixels[counter].b = 100;
+        //     result->pixels[counter].a = 100;
+
+        // } else
+        // {
+            result->pixels[counter].r = back->pixels[counter].r;
+            result->pixels[counter].g = back->pixels[counter].g;
+            result->pixels[counter].b = back->pixels[counter].b;
+            result->pixels[counter].a = back->pixels[counter].a;
+
+        // }
+
+
+#ifdef DEBUG
+    printf("%d\n", counter);
+#endif
+
+    }
+    // sleep(1);
 
     imageDtor(back);
     imageDtor(front);
@@ -82,7 +114,7 @@ Image * alpha_blend(Image *front, Image *back, int front_shift)
 
 int saveAsBMP(Image *result, const char *result_file_name)
 {
-    int buf_len = result->length + sign_len;
+    int buf_len = result->length_in_chars;
 
     char * buf = (char *)calloc(buf_len, sizeof(char));
 
@@ -90,17 +122,14 @@ int saveAsBMP(Image *result, const char *result_file_name)
     buf[1] = 'M';
 
     *((int *)(buf + 2)) = buf_len;
-
-    // int counter = 0;
-    // for (; counter < result->length; counter++)
-    // {
-    //     buf[sign_len+counter*sizeof(int) + 0] = result->pixels[counter].r;
-    //     buf[sign_len+counter*sizeof(int) + 1] = result->pixels[counter].g;
-    //     buf[sign_len+counter*sizeof(int) + 2] = result->pixels[counter].b;
-    //     buf[sign_len+counter*sizeof(int) + 3] = result->pixels[counter].a;
-    //     // printf("counter = %d\n", counter);
-    //     // DBG_OUT;
-    // }
+    
+    for (size_t counter = 0; counter < result->length; counter++)
+    {
+        buf[sign_len+counter*sizeof(int) + 0] = result->pixels[counter].r;
+        buf[sign_len+counter*sizeof(int) + 1] = result->pixels[counter].g;
+        buf[sign_len+counter*sizeof(int) + 2] = result->pixels[counter].b;
+        buf[sign_len+counter*sizeof(int) + 3] = result->pixels[counter].a;
+    }
 
     imageDtor(result);
 

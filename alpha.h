@@ -1,4 +1,3 @@
-
 struct pixel
 {
     char r;
@@ -10,7 +9,8 @@ struct pixel
 
 struct Image
 {
-    int length = 0;
+    size_t length_in_chars = 0;
+    size_t length = 0;
     pixel *pixels;
 };
 

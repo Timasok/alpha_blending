@@ -12,11 +12,9 @@ int main()
 {
     Image * back  = getImage(BACK_IMG_PATH);
     Image * front = getImage(FRONT_IMG_PATH);
-    Image * result = alpha_blend(back, front, 0);
 
+    Image * result = alpha_blend(front, back, 0);
     saveAsBMP(result, RESULT_IMG_PATH);
-
-    // imagePrint(back);
 
     char system_command[BUF_LEN] = {};     
     sprintf(system_command, "xdg-open %s", RESULT_IMG_PATH);
