@@ -14,7 +14,7 @@ OBJ    := $(patsubst $(SRC_DIR)%.cpp,  $(OBJ_DIR)%.o, $(SRC))
 all : $(ALPHA_EXE)
 
 $(ALPHA_EXE): $(OBJ) 
-	@$(CC) $(CFLAGS_NO_SANITIZER) $(OBJ) -o $(ALPHA_EXE)
+	@$(CC) $(CFLAGS) $(OBJ) -o $(ALPHA_EXE)
 
 $(OBJ_DIR)%.o : $(SRC_DIR)%.cpp
 	@$(CC) $(I_FLAG) -c $< -o $@

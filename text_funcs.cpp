@@ -65,12 +65,6 @@ int textCtor(Text_info * text, const char * file_name)
     return 0;
 }
 
-int textEdit(Text_info * text)
-{
-
-    return 0;
-}
-
 int textDtor(Text_info * text)
 {
     text->source_file = fopen(text->file_name, "wb");
@@ -101,6 +95,9 @@ int printText(Text_info * text)
     PRINT_LOG("Code_of_error = %d\n", text->code_of_error);
     PRINT_LOG("Buf_length = %ld\n", text->buf_length);
     PRINT_LOG("\n%s\n", TXT_BORDER);
+
+    // for(int i = 0; i < text->buf_length; i++)
+    //     PRINT_LOG("%2x ", text->buf[i]);
 
     closeTextLogs();
     text_logs = fopen("./logs/text_log.txt", "a+");

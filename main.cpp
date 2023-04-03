@@ -5,18 +5,18 @@
 
 const int BUF_LEN = 64;
 const char * RESULT_IMG_PATH = "img/result.bmp";
-const char * BACK_IMG_PATH   = "img/AskhatCat.bmp";
-const char * FRONT_IMG_PATH  = "img/Table.bmp";
+const char * BACK_IMG_PATH   = "img/Table.bmp";
+const char * FRONT_IMG_PATH  = "img/AskhatCat.bmp";
 
 int main()
 {
     Image * back  = getImage(BACK_IMG_PATH);
     Image * front = getImage(FRONT_IMG_PATH);
+    Image * result = alpha_blend(back, front, 0);
 
-    imageDtor(back);
-    imageDtor(front);
+    saveAsBMP(result, RESULT_IMG_PATH);
 
-    // alpha_blend(back, front, 0);
+    // imagePrint(back);
 
     char system_command[BUF_LEN] = {};     
     sprintf(system_command, "xdg-open %s", RESULT_IMG_PATH);
