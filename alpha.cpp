@@ -69,38 +69,34 @@ Image * alpha_blend(Image *front, Image *back, int front_shift)
     ASSERT(front->length > back->length);
 
     Image * result = imageCtor(back->length_in_chars);
+    pixel tmp = {};
 
     for (size_t counter = 0; counter < result->length; counter++)
     {
+        if (counter >= front_shift && (counter - front_shift) < front->length )
+        {
+            unsigned char alpha =  front->pixels[counter].a;
+            // // if (alpha > 0.0000001)
+            //     // printf("alpha = %lf\n", alpha);
+            tmp.r = front->pixels[counter].r*alpha +  back->pixels[counter].r*(1-alpha);
+            tmp.g = front->pixels[counter].g*alpha +  back->pixels[counter].g*(1-alpha);
+            tmp.b = front->pixels[counter].b*alpha +  back->pixels[counter].b*(1-alpha);
+            tmp.a = front->pixels[counter].a*alpha +  back->pixels[counter].a*(1-alpha);
+        } else
+        {
+            tmp.r = back->pixels[counter].r;
+            tmp.g = back->pixels[counter].g;
+            tmp.b = back->pixels[counter].b;
+            tmp.a = back->pixels[counter].a;
 
-        // if (counter >= front_shift && (counter - front_shift) < front->length )
-        // {
-        //     // result->pixels[counter].r = (front->pixels[counter].r*front->pixels[counter].a + 
-        //     //                             back->pixels[counter].r*(255 - front->pixels[counter].a))/255;
-        //     // result->pixels[counter].g = (front->pixels[counter].g*front->pixels[counter].a + 
-        //     //                             back->pixels[counter].g*(255 - front->pixels[counter].a))/255;
-        //     // result->pixels[counter].b = (front->pixels[counter].b*front->pixels[counter].a + 
-        //     //                             back->pixels[counter].b*(255 - front->pixels[counter].a))/255;
-        //     // result->pixels[counter].a = (front->pixels[counter].a*front->pixels[counter].a + 
-        //     //                             back->pixels[counter].a*(255 - front->pixels[counter].a))/255;
-        //     result->pixels[counter].r = 100;
-        //     result->pixels[counter].g = 100;
-        //     result->pixels[counter].b = 100;
-        //     result->pixels[counter].a = 100;
-
-        // } else
-        // {
-            result->pixels[counter].r = back->pixels[counter].r;
-            result->pixels[counter].g = back->pixels[counter].g;
-            result->pixels[counter].b = back->pixels[counter].b;
-            result->pixels[counter].a = back->pixels[counter].a;
-
-        // }
+        }
 
 
 #ifdef DEBUG
     printf("%d\n", counter);
 #endif
+
+        result->pixels[counter] = tmp;
 
     }
     // sleep(1);
