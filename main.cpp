@@ -10,10 +10,10 @@ const char * FRONT_IMG_PATH  = "img/AskhatCat.bmp";
 
 int main()
 {
-    Image * back  = getImage(BACK_IMG_PATH);
-    Image * front = getImage(FRONT_IMG_PATH);
+    Img * back  = getImage(BACK_IMG_PATH);
+    Img * front = getImage(FRONT_IMG_PATH);
 
-    Image * result = alpha_blend(front, back, 0);
+    Img * result = alpha_blend(front, back, 100, 100);
     saveAsBMP(result, RESULT_IMG_PATH);
 
     char system_command[BUF_LEN] = {};     
