@@ -32,8 +32,8 @@ Img * getImage(const char *source_file_name)
 
 Img * imageCtor(size_t buf_len, const char * buf)
 {
-    const int width_in_header = 22;
-    const int height_in_header = 18;
+    const int width_in_header = 18;
+    const int height_in_header = 22;
 
     Img * image = (Img *)calloc(1, sizeof(Img));
     image->length_in_chars = buf_len;
@@ -146,6 +146,7 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                 // printf("\n");
                 if(!flag_1)
                 {
+                    // printf("bk counter = %lu\n", back_counter);
                     printf("(%lu, %lu)\n", delta_x, delta_y);
                     printf("(%lu, %lu)\n", xi, yi);
                     flag_1++;
@@ -156,6 +157,7 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
             {
                 if(!flag_2 && flag_1)
                 {
+                    // printf("bk counter = %lu\n", back_counter);
                     printf("(%lu, %lu)\n", delta_x, delta_y);
                     printf("(%lu, %lu)\n", xi, yi);
                     flag_2++;
