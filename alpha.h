@@ -15,13 +15,16 @@ struct pixel
 
 struct Img
 {
-
     u_char header[HEADER_LEN] = {};
     size_t length_in_chars = 0;
     size_t length = 0;
+    long size = 0;
     int width  = 0;
     int height = 0;
-    pixel *pixels;
+    int x_pixels_per_meter = 0;
+    int y_pixels_per_meter = 0;
+
+    unsigned int *pixels;
 };
 
 Img * getImage(const char *source_file_name);

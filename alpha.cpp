@@ -6,23 +6,32 @@
 #include "alpha.h"
 #include "text_funcs.h"
 
+static int setPixel(void *src, void *dest)
+{
+    ASSERT_ASS(dest); 
+    ASSERT_ASS(src);
+
+    for(int idx = 0; idx < 4; idx++)
+    {
+        ((unsigned char *)dest)[idx] = ((unsigned char *)src)[idx];   
+    }
+
+    return 0;
+}
+
 Img * getImage(const char *source_file_name)
 {
     Text_info src = {};
     textCtor(&src, source_file_name);
 
     printText(&src);
-
-//add check signature
+    
     Img * image = imageCtor(src.buf_length, src.buf);
 
     // DBG_OUT;
     for (int counter = 0; counter < image->length; counter++)
     {
-        image->pixels[counter].r = src.buf[HEADER_LEN+counter*sizeof(int) + 0];
-        image->pixels[counter].g = src.buf[HEADER_LEN+counter*sizeof(int) + 1];
-        image->pixels[counter].b = src.buf[HEADER_LEN+counter*sizeof(int) + 2];
-        image->pixels[counter].a = src.buf[HEADER_LEN+counter*sizeof(int) + 3];
+        setPixel(image->pixels + counter, src.buf + HEADER_LEN + counter*sizeof(unsigned int));
     }
 
     textDtor(&src);
@@ -34,14 +43,37 @@ Img * imageCtor(size_t buf_len, const char * buf)
 {
     const int width_in_header = 18;
     const int height_in_header = 22;
+    const int image_size_in_header  = 32;
+    const int x_pixels_per_meter_in_header = 38;
+    const int y_pixels_per_meter_in_header = 42;
 
     Img * image = (Img *)calloc(1, sizeof(Img));
     image->length_in_chars = buf_len;
-    image->length = (buf_len - (HEADER_LEN + HEADER_LEN%4) )/sizeof(int);
-    image->pixels = (pixel *)calloc(image->length, sizeof(pixel));
+
+    image->pixels = (unsigned int *)calloc(image->length+1, sizeof(unsigned int));
 
     image->height = ((int *)(buf+height_in_header))[0];
     image->width  = ((int *)(buf+width_in_header))[0];
+    image->size   = ((int *)(buf+image_size_in_header))[0];
+
+    // image->x_pixels_per_meter = ((int *)(buf+x_pixels_per_meter_in_header))[0];
+    // image->y_pixels_per_meter = ((int *)(buf+y_pixels_per_meter_in_header))[0];
+
+    /*
+    image->x_pixels_per_meter = 1;
+    image->y_pixels_per_meter = 1;
+
+    image->width*=image->x_pixels_per_meter;
+    image->height*=image->y_pixels_per_meter;
+    */
+
+    image->length = (buf_len - (HEADER_LEN + HEADER_LEN%4))/sizeof(int);
+    // image->length = image->width*image->height;
+
+    printf("%lu\n", image->length);
+    // printf("%u\n", image->size);
+    // printf("per meter %d %d\n", image->x_pixels_per_meter, image->y_pixels_per_meter);
+    // sleep(3);
 
     memcpy(image->header, buf, HEADER_LEN);
 
@@ -53,20 +85,19 @@ Img * imageCopyStruct(Img * src)
     Img * image = (Img *)calloc(1, sizeof(Img));
     memcpy(image, src, sizeof(Img));
 
-    image->pixels = (pixel *)calloc(image->length, sizeof(pixel));
-
+    // image->pixels = (pixel *)calloc(image->length+1, sizeof(pixel));
+    image->pixels = (unsigned int *)calloc(image->length+1, sizeof(unsigned int));
 
     return image;
 };
-
 
 int imagePrint(Img *image)
 {
     for (size_t counter = 0; counter < image->length; counter++)
     {
-        printf("(%d %d %d %d)\n", 
-        image->pixels[counter].r, image->pixels[counter].g, 
-        image->pixels[counter].b, image->pixels[counter].a);
+        // printf("(%d %d %d %d)\n", 
+        // image->pixels[counter].r, image->pixels[counter].g, 
+        // image->pixels[counter].b, image->pixels[counter].a);
 
     }
     return 0;
@@ -109,69 +140,49 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
     Img * result = imageCopyStruct(back);
     pixel tmp = {};
 
-    
-            // double alpha =  front->pixels[counter].a/255;
-            // tmp.r = (unsigned char)((long)front->pixels[counter].r*alpha +  (long)back->pixels[counter].r*(1-alpha));
-            // tmp.g = (unsigned char)((long)front->pixels[counter].g*alpha +  (long)back->pixels[counter].g*(1-alpha));
-            // tmp.b = (unsigned char)((long)front->pixels[counter].b*alpha +  (long)back->pixels[counter].b*(1-alpha));
-            // tmp.a = (unsigned char)((long)front->pixels[counter].a*alpha +  (long)back->pixels[counter].a*(1-alpha));
+    // printf("back_length = %lu\n", back->length);    
+    // printf("back:  (%lu, %lu)\n", back->width, back->height);    
+    // printf("front: (%lu, %lu)\n", front->width, front->height);
+    // sleep(3);
 
-        // }else
-        // {
-        // }
-#ifdef DEBUG
-    printf("x_shift = %lu\n"
-           "y_shift = %lu\n",
-            x_shift, y_shift);
-    sleep(1);
-#endif
-
-    printf("back:  (%lu, %lu)\n", back->height, back->width);    
-    printf("front: (%lu, %lu)\n", front->height, front->width);   
-
-    int flag_1 = 0;
-    int flag_2 = 0;
-
-    for (size_t yi = 0; yi < result->height; yi++)
+    for (int yi = 0; yi < result->height; yi++)
     {
-        for(size_t xi = 0; xi < result->width; xi++)
+        for(int xi = 0; xi < result->width; xi++)
         {
-            size_t back_counter = yi*back->height + xi;
-            size_t delta_x = xi - x_shift;
-            size_t delta_y = yi - y_shift;
-            
-            if ( (0 <= delta_x && delta_x <= front->width) && (0 <= delta_y && delta_y <= front->height))
-            {   
-                size_t front_counter = ((yi-y_shift)*front->height + xi - x_shift);
-                // printf("\n");
-                if(!flag_1)
-                {
-                    // printf("bk counter = %lu\n", back_counter);
-                    printf("(%lu, %lu)\n", delta_x, delta_y);
-                    printf("(%lu, %lu)\n", xi, yi);
-                    flag_1++;
-                }
-#ifdef DEBUG
-#endif
-            }else
-            {
-                if(!flag_2 && flag_1)
-                {
-                    // printf("bk counter = %lu\n", back_counter);
-                    printf("(%lu, %lu)\n", delta_x, delta_y);
-                    printf("(%lu, %lu)\n", xi, yi);
-                    flag_2++;
-                }
+            int delta_x = xi - x_shift;
+            int delta_y = yi - y_shift;
 
-                tmp.r = back->pixels[back_counter].r;
-                tmp.g = back->pixels[back_counter].g;
-                tmp.b = back->pixels[back_counter].b;
-                tmp.a = back->pixels[back_counter].a;
-                
-                result->pixels[back_counter] = tmp;
+            size_t back_counter = yi*back->width + xi;
+            unsigned int result_color = 0;
+
+            // if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
+            // {
+            //     size_t front_counter = (delta_y*front->width + delta_x);
+
+            //     unsigned int back_pixel = back->pixels[back_counter];
+            //     unsigned int front_pixel = back->pixels[front_counter];
+
+            //     unsigned char back_alpha = back_pixel>>24;
+            //     unsigned char front_alpha = front_pixel>>24;
+
+            //     unsigned char one_color = 0;
+
+            //     for (int idx = 0; idx < sizeof(unsigned int)*8; idx+=sizeof(unsigned char)*8)
+            //     {
+            //         one_color = ((((0xFF << idx) & front_pixel) >> idx)*front_alpha 
+            //                         + (((0xFF << idx) & back_pixel) >> idx) * (0xFF - front_alpha))/0xFF;
+            //         result_color += one_color<<idx; 
+            //     }
+
+            // } else
+            {
+                result_color = back->pixels[back_counter];
             }
 
+            result->pixels[back_counter] = result_color;
+
         }
+    
     }
 
     imageDtor(back);
@@ -247,18 +258,10 @@ int saveAsBMP(Img *result, const char *result_file_name)
     unsigned char * buf = (unsigned char *)calloc(buf_len, sizeof(unsigned char));
 
     memcpy(buf, result->header, HEADER_LEN);
-
-    // buf[0] = 'B';
-    // buf[1] = 'M';
-
-    // *((int *)(buf + 2)) = buf_len;
     
     for (size_t counter = 0; counter < result->length; counter++)
     {
-        buf[HEADER_LEN+counter*sizeof(int) + 0] = result->pixels[counter].r;
-        buf[HEADER_LEN+counter*sizeof(int) + 1] = result->pixels[counter].g;
-        buf[HEADER_LEN+counter*sizeof(int) + 2] = result->pixels[counter].b;
-        buf[HEADER_LEN+counter*sizeof(int) + 3] = result->pixels[counter].a;
+        setPixel(buf+HEADER_LEN+counter*sizeof(int), result->pixels+counter);
     }
 
     imageDtor(result);

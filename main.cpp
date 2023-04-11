@@ -20,4 +20,4 @@ int main()
     sprintf(system_command, "xdg-open %s", RESULT_IMG_PATH);
     system(system_command);
     
-}
+}   

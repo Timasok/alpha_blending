@@ -48,4 +48,15 @@
         }                                                               \
     } while(0)                                                          \
 
+#define ASSERT_MSG(condition, ...)                                      \
+        if (!condition)                                                 \
+        {                                                               \
+            fprintf(stderr, "%s failed:",                               \
+                     #condition);                                       \
+            fprintf(stderr, __VA_ARGS__);                               \
+            fprintf(stderr, "\n");                                      \
+            break;                                                      \
+        }                                                               \
+
+
 #endif

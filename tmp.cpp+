@@ -1,0 +1,53 @@
+if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
+            {
+                // printf("\n");
+                // if(!flag_1)
+                // {
+                //     printf("bk counter = %lu\n", back_counter);
+                //     printf("(%lu, %lu)\n", delta_x, delta_y);
+                //     printf("(%lu, %lu)\n", xi, yi);
+                //     flag_1++;
+                // }
+#ifdef DEBUG
+#endif
+            } else
+            {
+                // if(!flag_2 && flag_1)
+                // {
+                //     printf("bk counter = %lu\n", back_counter);
+                //     printf("(%lu, %lu)\n", delta_x, delta_y);
+                //     printf("(%lu, %lu)\n", xi, yi);
+                //     flag_2++;
+                // }
+                // ASSERT_MSG((back_counter <= back->length), "(%lu, %lu)\n", xi, yi);
+                // ASSERT_MSG((back_counter <= back->length), "back_counter = %lu, back_len = %lu\n", back_counter, back->length);
+
+                // tmp.r = back->pixels[back_counter].r;
+                // tmp.g = back->pixels[back_counter].g;
+                // tmp.b = back->pixels[back_counter].b;
+                // tmp.a = back->pixels[back_counter].a;
+                
+                // result->pixels[back_counter] = tmp;
+            }
+
+            // printf("(%lu, %lu)\n", xi, yi);
+            // printf("bk counter = %lu\n", back_counter);
+
+            // double alpha =  front->pixels[counter].a/255;
+            // tmp.r = (unsigned char)((long)front->pixels[counter].r*alpha +  (long)back->pixels[counter].r*(1-alpha));
+            // tmp.g = (unsigned char)((long)front->pixels[counter].g*alpha +  (long)back->pixels[counter].g*(1-alpha));
+            // tmp.b = (unsigned char)((long)front->pixels[counter].b*alpha +  (long)back->pixels[counter].b*(1-alpha));
+            // tmp.a = (unsigned char)((long)front->pixels[counter].a*alpha +  (long)back->pixels[counter].a*(1-alpha));
+
+        // }else
+        // {
+        // }
+#ifdef DEBUG
+    printf("x_shift = %lu\n"
+           "y_shift = %lu\n",
+            x_shift, y_shift);
+    sleep(1);
+#endif
+
+    int flag_1 = 0;
+    int flag_2 = 0;

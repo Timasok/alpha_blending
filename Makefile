@@ -17,7 +17,7 @@ $(ALPHA_EXE): $(OBJ)
 	@$(CC) $(CFLAGS) $(OBJ) -o $(ALPHA_EXE)
 
 $(OBJ_DIR)%.o : $(SRC_DIR)%.cpp
-	@$(CC) $(I_FLAG) -c $< -o $@
+	@$(CC) $(CFLAGS) $(I_FLAG) -c $< -o $@
 
 mkdir :
 	@mkdir -p $(OBJ_DIR)
