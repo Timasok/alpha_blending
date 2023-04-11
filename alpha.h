@@ -1,7 +1,13 @@
+#include <SFML/Graphics.hpp>
+#include <SFML/System/Vector2.hpp>
+#include <SFML/Graphics/RectangleShape.hpp>
+
 // #define SSE
 // #define DEBUG
 
-const int HEADER_LEN = 58;
+// const int HEADER_LEN = 58;
+const int BYTE       = 8;
+const int HEADER_LEN = 56;
 const int PACK    = 4;
 
 struct pixel
@@ -21,11 +27,19 @@ struct Img
     long size = 0;
     int width  = 0;
     int height = 0;
-    int x_pixels_per_meter = 0;
-    int y_pixels_per_meter = 0;
+    int16_t color_size = 0;
 
-    unsigned int *pixels;
+    u_int *pixels;
 };
+
+#define IMG_PRINT(image)                                                                \
+    printf("Image:\n"                                                                   \
+           "\tvar name: %s"                                                             \
+           "\tsize: (%dx%d)\n"                                                          \
+           "\tpixels: %d"                                                               \
+           "\tbytes_in_one: %lu\n"                                                      \
+            ,#image, image->width, image->height, image->length, image->color_size)     \
+
 
 Img * getImage(const char *source_file_name);
 Img * imageCtor(size_t buf_len, const char * buf);

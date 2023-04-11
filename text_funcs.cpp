@@ -96,8 +96,8 @@ int printText(Text_info * text)
     PRINT_LOG("Buf_length = %ld\n", text->buf_length);
     PRINT_LOG("\n%s\n", TXT_BORDER);
 
-    // for(int i = 0; i < text->buf_length; i++)
-    //     PRINT_LOG("%2x ", text->buf[i]);
+    for(int i = 0; i < text->buf_length; i++)
+        PRINT_LOG("%2x ", text->buf[i]);
 
     closeTextLogs();
     text_logs = fopen("./logs/text_log.txt", "a+");

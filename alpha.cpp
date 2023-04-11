@@ -13,7 +13,7 @@ static int setPixel(void *src, void *dest)
 
     for(int idx = 0; idx < 4; idx++)
     {
-        ((unsigned char *)dest)[idx] = ((unsigned char *)src)[idx];   
+        ((u_char *)dest)[idx] = ((u_char *)src)[idx];   
     }
 
     return 0;
@@ -28,12 +28,35 @@ Img * getImage(const char *source_file_name)
     
     Img * image = imageCtor(src.buf_length, src.buf);
 
-    // DBG_OUT;
-    for (int counter = 0; counter < image->length; counter++)
-    {
-        setPixel(image->pixels + counter, src.buf + HEADER_LEN + counter*sizeof(unsigned int));
-    }
+    size_t counter = image->length - 1;
+    // size_t counter = 0;
 
+    u_char color = 0;
+    u_int pixel = 0;
+    u_char * source = ((u_char *)(&src.buf[HEADER_LEN]));
+
+    // printf("%x\n", source[0]);
+
+    while(counter*image->color_size < image->length)
+    {
+        pixel = 0;
+
+        // printf("RGB: ( ");
+        for(int idx = 0; idx < image->color_size; idx++)
+        {
+            color = source[idx];
+            // printf("%2x ", color);
+            pixel+=color<<idx*BYTE;
+        }
+        // printf(")\n");
+
+        image->pixels[counter] = pixel;
+
+        source-=image->color_size;
+        counter--;
+        // printf("%d\n", HEADER_LEN + counter*image->color_size);
+    }
+    
     textDtor(&src);
 
     return image;
@@ -44,48 +67,42 @@ Img * imageCtor(size_t buf_len, const char * buf)
     const int width_in_header = 18;
     const int height_in_header = 22;
     const int image_size_in_header  = 32;
-    const int x_pixels_per_meter_in_header = 38;
-    const int y_pixels_per_meter_in_header = 42;
+    const int color_size_in_header  = 28;
 
     Img * image = (Img *)calloc(1, sizeof(Img));
     image->length_in_chars = buf_len;
 
-    image->pixels = (unsigned int *)calloc(image->length+1, sizeof(unsigned int));
-
     image->height = ((int *)(buf+height_in_header))[0];
     image->width  = ((int *)(buf+width_in_header))[0];
     image->size   = ((int *)(buf+image_size_in_header))[0];
+    image->color_size = ((int16_t *)(buf+color_size_in_header))[0]/BYTE;
+    
+    ASSERT(image->color_size > 4);
 
-    // image->x_pixels_per_meter = ((int *)(buf+x_pixels_per_meter_in_header))[0];
-    // image->y_pixels_per_meter = ((int *)(buf+y_pixels_per_meter_in_header))[0];
+    image->length = (buf_len - HEADER_LEN)/image->color_size;
+    //  + HEADER_LEN%COLOR_SIZE));
 
-    /*
-    image->x_pixels_per_meter = 1;
-    image->y_pixels_per_meter = 1;
-
-    image->width*=image->x_pixels_per_meter;
-    image->height*=image->y_pixels_per_meter;
-    */
-
-    image->length = (buf_len - (HEADER_LEN + HEADER_LEN%4))/sizeof(int);
-    // image->length = image->width*image->height;
-
-    printf("%lu\n", image->length);
-    // printf("%u\n", image->size);
-    // printf("per meter %d %d\n", image->x_pixels_per_meter, image->y_pixels_per_meter);
-    // sleep(3);
+    image->pixels = (u_int *)calloc(image->length+1, sizeof(u_int));
 
     memcpy(image->header, buf, HEADER_LEN);
+
 
     return image;
 };
 
-Img * imageCopyStruct(Img * src)
+Img * imageCopyStruct(Img * src, int16_t new_color_size)
 {
     Img * image = (Img *)calloc(1, sizeof(Img));
     memcpy(image, src, sizeof(Img));
 
-    // image->pixels = (pixel *)calloc(image->length+1, sizeof(pixel));
+    if (image->color_size != new_color_size)
+    {
+        int16_t wrong_color_size = image->color_size; 
+        image->color_size = new_color_size;
+
+        image->length = //TODO
+    }
+
     image->pixels = (unsigned int *)calloc(image->length+1, sizeof(unsigned int));
 
     return image;
@@ -93,13 +110,11 @@ Img * imageCopyStruct(Img * src)
 
 int imagePrint(Img *image)
 {
-    for (size_t counter = 0; counter < image->length; counter++)
-    {
-        // printf("(%d %d %d %d)\n", 
-        // image->pixels[counter].r, image->pixels[counter].g, 
-        // image->pixels[counter].b, image->pixels[counter].a);
+    printf("Image:\n"
+           "\tsize (%dx%d)\n"
+           "\tcolor size = %lu\n"
+            ,image->width, image->height, image->color_size);
 
-    }
     return 0;
 };
 
@@ -141,9 +156,9 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
     pixel tmp = {};
 
     // printf("back_length = %lu\n", back->length);    
-    // printf("back:  (%lu, %lu)\n", back->width, back->height);    
-    // printf("front: (%lu, %lu)\n", front->width, front->height);
-    // sleep(3);
+    printf("back:  (%lu, %lu)\n", back->width, back->height);    
+    printf("front: (%lu, %lu)\n", front->width, front->height);
+    sleep(3);
 
     for (int yi = 0; yi < result->height; yi++)
     {
@@ -259,9 +274,9 @@ int saveAsBMP(Img *result, const char *result_file_name)
 
     memcpy(buf, result->header, HEADER_LEN);
     
-    for (size_t counter = 0; counter < result->length; counter++)
+    for (size_t counter = result->length - 1; counter >= 0; counter--)
     {
-        setPixel(buf+HEADER_LEN+counter*sizeof(int), result->pixels+counter);
+        setPixel(buf+HEADER_LEN+counter*sizeof(unsigned int), result->pixels+counter);
     }
 
     imageDtor(result);

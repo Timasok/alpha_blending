@@ -13,10 +13,13 @@ int main()
     Img * back  = getImage(BACK_IMG_PATH);
     Img * front = getImage(FRONT_IMG_PATH);
 
-    Img * result = alpha_blend(front, back, 100, 100);
-    saveAsBMP(result, RESULT_IMG_PATH);
+    IMG_PRINT(back);
+    IMG_PRINT(front);
+ 
+    // Img * result = alpha_blend(front, back, 100, 100);
+    // saveAsBMP(result, RESULT_IMG_PATH);
 
-    char system_command[BUF_LEN] = {};     
+    char system_command[BUF_LEN] = {};
     sprintf(system_command, "xdg-open %s", RESULT_IMG_PATH);
     system(system_command);
     
