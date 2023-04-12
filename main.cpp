@@ -10,16 +10,16 @@ const char * FRONT_IMG_PATH  = "img/AskhatCat.bmp";
 
 int main()
 {
-    // Img * back  = getImage(BACK_IMG_PATH);
-    // IMG_PRINT(back);
-    // saveAsBMP(back, RESULT_IMG_PATH);
-
+    Img * back  = getImage(BACK_IMG_PATH);
     Img * front = getImage(FRONT_IMG_PATH);
+    IMG_PRINT(back);
     IMG_PRINT(front);
-    saveAsBMP(front, RESULT_IMG_PATH);
 
-    // Img * result = alpha_blend(front, back, 100, 100);
-    // saveAsBMP(result, RESULT_IMG_PATH);
+    // saveAsBMP(back, RESULT_IMG_PATH);
+    // saveAsBMP(front, RESULT_IMG_PATH);
+
+    Img * result = alpha_blend(front, back, 100, 100);
+    saveAsBMP(result, RESULT_IMG_PATH);
 
     char system_command[BUF_LEN] = {};
     sprintf(system_command, "xdg-open %s", RESULT_IMG_PATH);

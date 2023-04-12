@@ -5,9 +5,9 @@
 // #define SSE
 // #define DEBUG
 
-// const int HEADER_LEN = 58;
 const int BYTE       = 8;
-const int HEADER_LEN = 56;
+// const int HEADER_LEN = 56;
+const int HEADER_LEN = 54;
 const int PACK    = 4;
 
 struct pixel
