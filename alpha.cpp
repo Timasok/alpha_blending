@@ -28,8 +28,6 @@ Img * getImage(const char *source_file_name)
     
     Img * image = imageCtor(src.buf_length, src.buf);
 
-    size_t counter = image->length - 1;
-    // size_t counter = 0;
 
     u_char color = 0;
     u_int pixel = 0;
@@ -37,24 +35,25 @@ Img * getImage(const char *source_file_name)
 
     // printf("%x\n", source[0]);
 
-    while(counter*image->color_size < image->length)
+    size_t counter = image->length - 1;
+    for(; counter > 0; counter--)
     {
         pixel = 0;
 
-        // printf("RGB: ( ");
+        printf("RGB: ( ");
         for(int idx = 0; idx < image->color_size; idx++)
         {
             color = source[idx];
-            // printf("%2x ", color);
+            printf("%2x ", color);
             pixel+=color<<idx*BYTE;
         }
-        // printf(")\n");
+        printf(")\n");
 
         image->pixels[counter] = pixel;
 
-        source-=image->color_size;
-        counter--;
-        // printf("%d\n", HEADER_LEN + counter*image->color_size);
+        source+=image->color_size;
+
+        //printf("%d\n", HEADER_LEN + counter*image->color_size);
     }
     
     textDtor(&src);
@@ -97,13 +96,11 @@ Img * imageCopyStruct(Img * src, int16_t new_color_size)
 
     if (image->color_size != new_color_size)
     {
-        int16_t wrong_color_size = image->color_size; 
         image->color_size = new_color_size;
-
-        image->length = //TODO
+        image->length_in_chars = HEADER_LEN + image->length*image->color_size;
     }
 
-    image->pixels = (unsigned int *)calloc(image->length+1, sizeof(unsigned int));
+    image->pixels = (u_int *)calloc(image->length+1, sizeof(u_int));
 
     return image;
 };
@@ -152,7 +149,9 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 {
     ASSERT(front->length > back->length);
 
-    Img * result = imageCopyStruct(back);
+    int16_t new_color_size = MAX(back->color_size, front->color_size);
+
+    Img * result = imageCopyStruct(back, new_color_size);
     pixel tmp = {};
 
     // printf("back_length = %lu\n", back->length);    
@@ -206,7 +205,6 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
     return result;
 
 }
-
 
 #else  
 Img * alpha_blend(Img *front, Img *back, int front_shift)
@@ -270,19 +268,47 @@ int saveAsBMP(Img *result, const char *result_file_name)
 {
     int buf_len = result->length_in_chars;
 
-    unsigned char * buf = (unsigned char *)calloc(buf_len, sizeof(unsigned char));
+    u_char * buf = (u_char *)calloc(buf_len, sizeof(u_char));
 
     memcpy(buf, result->header, HEADER_LEN);
-    
-    for (size_t counter = result->length - 1; counter >= 0; counter--)
+
+    u_char color = 0;
+    u_int pixel = 0;
+    u_char * dest = ((u_char *)(&buf[HEADER_LEN]));
+
+    // printf("%x\n", source[0]);
+
+    size_t counter = result->length - 1;
+    for(; counter > 0; counter--)
     {
-        setPixel(buf+HEADER_LEN+counter*sizeof(unsigned int), result->pixels+counter);
+        pixel = result->pixels[counter];
+
+        printf("RGB: ( ");
+        for(int idx = 0; idx < sizeof(u_int); idx++)
+        {
+            color = ((0xFF<<idx*BYTE)&pixel)>>idx*BYTE;
+
+            if (idx < result->color_size)
+            {
+                *(dest+idx) = color; 
+                printf("%2x ", color);
+            }
+        }
+        printf(")\n");
+
+        dest+=result->color_size;
+        // printf("%d\n", HEADER_LEN + counter*image->color_size);
     }
+
+    // for (size_t counter = result->length - 1; counter >= 0; counter--)
+    // {
+    //     setPixel(buf+HEADER_LEN+counter*sizeof(u_int), result->pixels+counter);
+    // }
 
     imageDtor(result);
 
     FILE * result_file = fopen(result_file_name, "wb");
-    fwrite(buf, sizeof(unsigned char), buf_len, result_file);
+    fwrite(buf, sizeof(u_char), buf_len, result_file);
     fclose(result_file);
     free(buf);
 

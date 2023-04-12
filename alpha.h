@@ -44,6 +44,7 @@ struct Img
 Img * getImage(const char *source_file_name);
 Img * imageCtor(size_t buf_len, const char * buf);
 int imagePrint(Img *image);
+Img * imageCopyStruct(Img * src, int16_t new_color_size);
 
 int imageDtor(Img *image);
 Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift); // frees-> front, back, allocates bytes for result
