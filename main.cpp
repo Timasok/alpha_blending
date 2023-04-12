@@ -15,10 +15,7 @@ int main()
     IMG_PRINT(back);
     IMG_PRINT(front);
 
-    // saveAsBMP(back, RESULT_IMG_PATH);
-    // saveAsBMP(front, RESULT_IMG_PATH);
-
-    Img * result = alpha_blend(front, back, 100, 100);
+    Img * result = alpha_blend(front, back, 275, 230);
     saveAsBMP(result, RESULT_IMG_PATH);
 
     char system_command[BUF_LEN] = {};

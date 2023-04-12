@@ -33,8 +33,6 @@ Img * getImage(const char *source_file_name)
     u_int pixel = 0;
     u_char * source = ((u_char *)(&src.buf[HEADER_LEN]));
 
-    // printf("%x\n", source[0]);
-
     size_t counter = image->length - 1;
     for(; counter > 0; counter--)
     {
@@ -150,6 +148,9 @@ int imageDtor(Img *image)
 #ifndef SSE
 Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 {
+    x_shift = abs(back->width - front->width - x_shift);
+    // y_shift = back->height - front->height - y_shift;
+
     ASSERT(front->length > back->length);
 
     int16_t new_color_size = MAX(back->color_size, front->color_size);
@@ -166,28 +167,31 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 
             size_t back_counter = yi*back->width + xi;
             unsigned int result_color = 0;
-/*
+
             if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
             {
-                size_t front_counter = (delta_y*front->width + delta_x);
+               size_t front_counter = (delta_y*front->width + delta_x);
+   
+                u_int back_pixel = back->pixels[back_counter];
+                u_int front_pixel = front->pixels[front_counter];
 
-                unsigned int back_pixel = back->pixels[back_counter];
-                unsigned int front_pixel = back->pixels[front_counter];
-
-                unsigned char back_alpha = back_pixel>>24;
-                unsigned char front_alpha = front_pixel>>24;
-
-                unsigned char one_color = 0;
-
-                for (int idx = 0; idx < sizeof(unsigned int)*8; idx+=sizeof(unsigned char)*8)
+                u_char front_alpha = front_pixel>>(3*BYTE);
+                u_char one_color = 0;
+                
+                // printf("%2x ", front_alpha);
+                // printf("RGB: ( ");
+                for(int idx = 0; idx < sizeof(u_int)*BYTE; idx+=BYTE)
                 {
-                    one_color = ((((0xFF << idx) & front_pixel) >> idx)*front_alpha 
-                                    + (((0xFF << idx) & back_pixel) >> idx) * (0xFF - front_alpha))/0xFF;
+                    one_color = (((((0xFF << idx) & front_pixel) >> idx)*front_alpha 
+                                    + (((0xFF << idx) & back_pixel) >> idx) * (0xFF - front_alpha)) )/0xFF;
+                    // printf("%2x ", one_color);
+
                     result_color += one_color<<idx; 
+
                 }
+                // printf(")\n");
 
             } else
-*/
             {
                 result_color = back->pixels[back_counter];
             }

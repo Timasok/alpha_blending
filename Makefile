@@ -15,6 +15,9 @@ OBJ    := $(patsubst $(SRC_DIR)%.cpp,  $(OBJ_DIR)%.o, $(SRC))
 
 all : $(ALPHA_EXE)
 
+run: $(ALPHA_EXE)
+	@./$(ALPHA_EXE)
+
 $(ALPHA_EXE): $(OBJ)
 	@$(CC) $(CFLAGS) $(SFML_FLAGS) $(OBJ) -o $(ALPHA_EXE)
 
