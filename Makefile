@@ -4,7 +4,7 @@ SRC_DIR	:= ./
 I_FLAG 	:= -I/usr/include/
 CC 		:= g++
 SFML_FLAGS := -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system
-CFLAGS     := -Wno-format -g -fsanitize=address
+CFLAGS     := -Wno-format -g -fsanitize=address -mavx
 CFLAGS_NO_SANITIZER := -Wno-format -g
 
 DRAW_MODULE := $(OBJ_DIR)alpha.o

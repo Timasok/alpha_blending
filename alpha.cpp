@@ -124,26 +124,11 @@ int imageDtor(Img *image)
 };
 
 #ifdef SSE
-        #include <emmintrin.h>
         #include <smmintrin.h>
         #include <tmmintrin.h>
+        #include <emmintrin.h>
+        #include "intrinsics_debug.h"
 #endif
-
-#ifdef DEBUGa
-    printf("front_shift = %lu\n"
-           "front->length  = %lu\n"
-           "result->length = %lu\n",
-            front_shift, front->length, result->length);
-    int flag = 0;
-#endif
-#ifdef DEBUGa
-            if (!flag)
-            {
-                printf("first counter = %lu\n", counter);
-                flag++;
-            }else if (counter - front_shift == front->length)
-                printf("last counter = %lu\n", counter);
-#endif   
 
 #ifndef SSE
 Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
@@ -210,12 +195,93 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 }
 
 #else  
-Img * alpha_blend(Img *front, Img *back, int front_shift)
+Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 {
+    x_shift = abs(back->width - front->width - x_shift);
+    // y_shift = back->height - front->height - y_shift;
+
     ASSERT(front->length > back->length);
 
-    Img * result = imageCopyStruct(back);
+    int16_t new_color_size = MAX(back->color_size, front->color_size);
+
+    Img * result = imageCopyStruct(back, new_color_size);
     pixel tmp = {};
+
+    for (int yi = 0; yi < result->height; yi++)
+    {
+        for(int xi = 0; xi < result->width; xi++)
+        {
+            int delta_x = xi - x_shift;
+            int delta_y = yi - y_shift;
+
+            size_t back_counter = yi*back->width + xi;
+            unsigned int result_color = 0;
+
+            if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
+            {
+                size_t front_counter = (delta_y*front->width + delta_x);
+            const  __m128i _0 = _mm_set1_epi8(0); 
+
+                // printf("%lu ", back_counter);
+                __m128i front_pixel =  _mm_load_si128((__m128i const *)(front->pixels[front_counter]));
+                __m128i back_pixel  = _mm_load_si128((__m128i const *)(back->pixels[back_counter]));
+
+                __m128i FRONT_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) front_pixel);
+                __m128i BACK_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) back_pixel);
+
+                front_pixel = _mm_cvtepi8_epi16 (front_pixel);
+                back_pixel = _mm_cvtepi8_epi16 (back_pixel);
+
+                FRONT_PIXEL = _mm_cvtepi8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
+                BACK_PIXEL = _mm_cvtepi8_epi16 (BACK_PIXEL);
+
+            const   __m128i moveA = _mm_setr_epi8(15, 14, 15, 14, 15, 14, 15, 14, 6, 5, 6, 5, 6, 5, 6, 5);
+            const   __m128i _255  = _mm_setr_epi8(0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255);
+
+                __m128i front_alpha = _mm_shuffle_epi8(front_pixel, moveA);                  // front.a(0,1)
+                __m128i FRONT_ALPHA = _mm_shuffle_epi8(FRONT_PIXEL, moveA);                  // front.a(2,3)
+
+                front_pixel = _mm_mul_epu32(front_pixel, front_alpha);
+                FRONT_PIXEL = _mm_mul_epu32(FRONT_PIXEL, FRONT_ALPHA);
+
+                front_alpha =  _mm_sub_epi32 (_255, front_alpha);
+                FRONT_ALPHA =  _mm_sub_epi32 (_255, FRONT_ALPHA);
+
+                back_pixel = _mm_mul_epu32(back_pixel, front_alpha);
+                BACK_PIXEL = _mm_mul_epu32(BACK_PIXEL, FRONT_ALPHA);
+
+                __m128i sum = _mm_add_epi32(front_pixel, back_pixel);
+                __m128i SUM = _mm_add_epi32(FRONT_PIXEL, BACK_PIXEL);
+
+            const   __m128i moveSUM = _mm_setr_epi8(0, 0, 0, 0, 0, 0, 0, 0, 15, 13, 11, 9, 7, 5, 3, 1);
+
+                sum = _mm_shuffle_epi8(sum, moveSUM);
+                SUM = _mm_shuffle_epi8(SUM, moveSUM);
+
+                __m128i color = (__m128i)_mm_move_ss((__m128)sum, (__m128)SUM); 
+
+                u_char one_color = 0;
+                // printf("%2x ", front_alpha);
+                // printf("RGB: ( ");
+                for(int counter = 0; counter < sizeof(u_int); counter++)
+                {
+                    one_color = ((u_char *)&color)[BYTE - 1 - counter];
+                    // printf("%2x ", one_color);
+                    result_color += one_color<<counter*BYTE; 
+                }
+                // printf(")\n");
+                
+
+            } else
+            {
+                result_color = back->pixels[back_counter];
+            }
+
+            result->pixels[back_counter] = result_color;
+
+        }
+    
+    }
 
     imageDtor(back);
     imageDtor(front);
@@ -224,47 +290,6 @@ Img * alpha_blend(Img *front, Img *back, int front_shift)
 
 }
 
-        __m128i fr = _mm_load_si128((__m128i *)&front->pixels[counter]);
-        __m128i bk = _mm_load_si128((__m128i *)&back->pixels[counter]);
-
-        __m128i FR = (__m128i) _mm_movpi64_epi64 (*((__m64*)&fr));
-        __m128i BK = (__m128i) _mm_movpi64_epi64 (*((__m64*)&bk));
-
-        fr = _mm_cvtepu8_epi16 (fr);
-        bk = _mm_cvtepu8_epi16 (bk);
-
-        FR = _mm_cvtepu8_epi16 (FR);                              // сделать воздух более разреженым
-        BK = _mm_cvtepu8_epi16 (BK);
-
-const   __m128i moveA = _mm_setr_epi8(15, 14, 15, 14, 15, 14, 15, 14, 6, 5, 6, 5, 6, 5, 6, 5);
-const   __m128i _255  = _mm_setr_epi8(0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255, 0, 255);
-
-        __m128i a = _mm_shuffle_epi8(fr, moveA);                  // front.a(0,1)
-        __m128i A = _mm_shuffle_epi8(FR, moveA);                  // front.a(2,3)
-
-        fr = _mm_mul_epu32(fr, a);
-        FR = _mm_mul_epu32(FR, A);
-
-        a =  _mm_sub_epi32 (_255, a);
-        A =  _mm_sub_epi32 (_255, A);
-
-        bk = _mm_mul_epu32(bk, a);
-        BK = _mm_mul_epu32(BK, A);
-
-        __m128i sum = _mm_add_epi32(fr, bk);
-        __m128i SUM = _mm_add_epi32(FR, BK);
-
-const   __m128i moveSUM = _mm_setr_epi8(0, 0, 0, 0, 0, 0, 0, 0, 15, 13, 11, 9, 7, 5, 3, 1);
-
-        sum = _mm_shuffle_epi8(sum, moveSUM);
-        SUM = _mm_shuffle_epi8(SUM, moveSUM);
-
-        __m128i color = (__m128i)_mm_move_ss((__m128)sum, (__m128)SUM); 
-
-        // tmp.r = back->pixels[counter].r + front->pixels[counter].r;
-        // tmp.g = back->pixels[counter].g + front->pixels[counter].g;
-        // tmp.b = back->pixels[counter].b + front->pixels[counter].b;
-        // tmp.a = back->pixels[counter].a + front->pixels[counter].a;
 #endif
 
 int saveAsBMP(Img *result, const char *result_file_name)

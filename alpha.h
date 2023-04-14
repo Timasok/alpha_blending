@@ -2,7 +2,7 @@
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
 
-// #define SSE
+#define SSE
 // #define DEBUG
 
 const int BYTE       = 8;
