@@ -128,7 +128,7 @@ int imageDtor(Img *image)
         #include <tmmintrin.h>
         #include <emmintrin.h>
         #include "intrinsics_debug.h"
-        #define zero_val 0xFF
+        #define zero_val 0x80
 #endif
 
 #ifndef SSE
@@ -239,21 +239,30 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                 __m128i FRONT_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) front_pixel);
                 __m128i BACK_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) back_pixel);
 
-                front_pixel = _mm_cvtepi8_epi16 (front_pixel);
-                back_pixel = _mm_cvtepi8_epi16 (back_pixel);
+                // front_pixel = (__m128i) _mm_movehl_ps((__m128) front_pixel, (__m128) _0);
+                // back_pixel = (__m128i) _mm_movehl_ps((__m128) back_pixel, (__m128) _0);
 
-                FRONT_PIXEL = _mm_cvtepi8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
-                BACK_PIXEL = _mm_cvtepi8_epi16 (BACK_PIXEL);
+                printf("initial:\n");
+                PRINT_MM_INT(4, front_pixel);
+                PRINT_MM_INT(4, FRONT_PIXEL);
+                PRINT_MM_INT(4, back_pixel);
+                PRINT_MM_INT(4, BACK_PIXEL);
+                printf("***********************************\n");
 
-            const   __m128i alpha_mask = _mm_setr_epi8(zero_val, 14, zero_val, 14, zero_val, 14, zero_val,
-                                                     14, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 6);
+                front_pixel = _mm_cvtepu8_epi16 (front_pixel);
+                back_pixel = _mm_cvtepu8_epi16 (back_pixel);
+
+                FRONT_PIXEL = _mm_cvtepu8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
+                BACK_PIXEL = _mm_cvtepu8_epi16 (BACK_PIXEL);
+
+            const   __m128i alpha_mask = _mm_setr_epi8( 14, zero_val, 14, zero_val, 14, zero_val,
+                                                     14, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 6, zero_val);
 
                 __m128i front_alpha = _mm_shuffle_epi8(front_pixel, alpha_mask);                  // front.a(0,1)
                 __m128i FRONT_ALPHA = _mm_shuffle_epi8(FRONT_PIXEL, alpha_mask);                  // front.a(2,3)
                 
-
                 int drawing_flag = 0;
-                // int drawing_flag = _mm_movemask_epi8(front_alpha) & _mm_movemask_epi8(FRONT_ALPHA);
+                drawing_flag += _mm_movemask_epi8(front_alpha) & _mm_movemask_epi8(FRONT_ALPHA);
 
                 if(drawing_flag)
                 {
@@ -285,6 +294,11 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
 
                 if(drawing_flag)
                 {
+                    PRINT_MM_INT(4, front_pixel);
+                    PRINT_MM_INT(4, FRONT_PIXEL);
+                    PRINT_MM_INT(4, back_pixel);
+                    PRINT_MM_INT(4, BACK_PIXEL);
+                    printf("***********************************\n");
                     PRINT_MM_INT(4, sum_low);
                     PRINT_MM_INT(4, sum_high);
                     printf("***********************************\n");
@@ -305,15 +319,15 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                     printf("***********************************\n");
                 }
 
-                u_char one_color = 0;
-                // printf("%2x ", front_alpha);
-                // printf("RGB: ( ");
-                for(int counter = 0; counter < sizeof(u_int); counter++)
-                {
-                    one_color = ((u_char *)&color)[BYTE - 1 - counter];
-                    // printf("%2x ", one_color);
-                    result_color += one_color<<counter*BYTE; 
-                }
+                // u_char one_color = 0;
+                // // printf("%2x ", front_alpha);
+                // // printf("RGB: ( ");
+                // for(int counter = 0; counter < sizeof(u_int); counter++)
+                // {
+                //     one_color = ((u_char *)&color)[BYTE - 1 - counter];
+                //     // printf("%2x ", one_color);
+                //     result_color += one_color<<counter*BYTE; 
+                // }
                 // _mm_store_si128((__m128i *)&result->pixels[back_counter], color);
                 // printf(")\n");
                 _mm_storeu_si128 ((__m128i*) &(result->pixels[back_counter]), color) ;
