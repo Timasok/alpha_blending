@@ -201,7 +201,7 @@ inline int blendingAlgorithm(Img * result, Img * front, Img * back, int delta_x,
 
     if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
     {
-        unsigned int result_color = 0;
+        volatile unsigned int result_color = 0;
         size_t front_counter = (delta_y*front->width + delta_x);
 
         u_int back_pixel = back->pixels[back_counter];
@@ -246,26 +246,36 @@ Img * alpha_blend(Img *back, Img *front, int x_shift, int y_shift)
     Img * result = imageCopyStruct(back, new_color_size);
     pixel tmp = {};
 
-    Clock clock;
+    int cycles = 30;
+    float fps_average = 0;
 
-    for (int yi = 0; yi < result->height; yi++)
+    for(int idx = 0; idx < cycles; idx++)
     {
-        for(int xi = 0; xi < result->width;)
+        Clock clock;
+
+        for (int yi = 0; yi < result->height; yi++)
         {
-            int delta_x = xi - x_shift;
-            int delta_y = yi - y_shift;
+            volatile int xi = 0;
+            for(; xi < result->width;)
+            {
+                int delta_x = xi - x_shift;
+                int delta_y = yi - y_shift;
 
-            size_t back_counter = yi*back->width + xi;
-            unsigned int result_color = 0;
+                size_t back_counter = yi*back->width + xi;
+                unsigned int result_color = 0;
 
-            xi+=blendingAlgorithm(result, front, back, delta_x, delta_y, back_counter);
+                xi+=blendingAlgorithm(result, front, back, delta_x, delta_y, back_counter);
+            }
+        
         }
-    
+
+        float currentTime = clock.restart().asSeconds();
+        float fps = 1.f / (currentTime);
+        fps_average+=fps;
     }
 
-    float currentTime = clock.restart().asSeconds();
-    float fps = 1.f / (currentTime);
-    printf("FPS = %g\n", fps);
+    fps_average/=cycles;
+    printf("FPS = %g\n", fps_average);
 
     imageDtor(back);
     imageDtor(front);

@@ -34,11 +34,11 @@ result_pixel.color = (front_pixel.alpha*front_pixel.color + (255 - front_pixel.a
 
 | O_flag | SSE/NO SSE  |  FPS  |  Coeff |
 | :----: |  :--------: | :---: | :----: |
-|  -O0   |    NO SSE   | **231.8** |  1     |
-|  -O2   |    NO SSE   | 519.2 |  2.23  |
-|  -O3   |    NO SSE   | 489.0 |  2.11  |
-| -Ofast |    NO SSE   | 470.4 |  2.03  |
-|  -O0   |     SSE     |       |        |
-|  -O2   |     SSE     |       |        |
-|  -O3   |     SSE     |       |        |
-| -Ofast |     SSE     | ***шиш***  |        |
+|  -O0   |    NO SSE   | **4200** |  1     |
+|  -O2   |    NO SSE   | 15800 |  3.76  |
+|  -O3   |    NO SSE   | 16400 |  3.90  |
+| -Ofast |    NO SSE   | 16200 |  3.86  |
+|  -O0   |     SSE     |  4400 |  1.01  |
+|  -O2   |     SSE     | 14500 |  3.45  |
+|  -O3   |     SSE     | **18300**  |  4.35  |
+| -Ofast |     SSE     | 13500 |  3.21  |
