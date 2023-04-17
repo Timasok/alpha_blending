@@ -5,7 +5,7 @@
 
 using namespace sf;
 
-#define SSE
+// #define SSE
 // #define DEBUG
 
 const int BYTE       = 8;
@@ -13,7 +13,7 @@ const int BYTE       = 8;
 const int HEADER_LEN = 54;
 const int PACK    = 4;
 
-struct pixel
+struct Pixel
 {
     u_char r;
     u_char g;

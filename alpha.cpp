@@ -244,7 +244,7 @@ Img * alpha_blend(Img *back, Img *front, int x_shift, int y_shift)
     int16_t new_color_size = MAX(back->color_size, front->color_size);
 
     Img * result = imageCopyStruct(back, new_color_size);
-    pixel tmp = {};
+    u_int tmp = {};
 
     int cycles = 30;
     float fps_average = 0;
