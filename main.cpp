@@ -15,13 +15,7 @@ int main()
     IMG_PRINT(back);
     IMG_PRINT(front);
 
-    Clock clock;
-
     Img * result = alpha_blend(front, back, 275, 230);
-
-    float currentTime = clock.restart().asSeconds();
-    float fps = 1.f / (currentTime);
-    printf("FPS = %g\n", fps);
 
     saveAsBMP(result, RESULT_IMG_PATH);
 

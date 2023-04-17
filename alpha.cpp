@@ -6,6 +6,8 @@
 #include "alpha.h"
 #include "text_funcs.h"
 
+static const size_t N_BYTES = 4;
+
 static int setPixel(void *src, void *dest)
 {
     ASSERT_ASS(dest); 
@@ -122,17 +124,117 @@ int imageDtor(Img *image)
     free(image);
     return 0;
 };
-
+ 
 #ifdef SSE
         #include <smmintrin.h>
         #include <tmmintrin.h>
         #include <emmintrin.h>
         #include "intrinsics_debug.h"
         #define zero_val 0x80
+
+inline int blendingAlgorithm(Img * result, Img * front, Img * back, int delta_x, int delta_y, size_t back_counter)
+{
+    int step = 1;
+
+    if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
+    {
+    
+    const __m128i _0 = _mm_set1_epi8(0);
+    const __m128i _255  = _mm_set1_epi16(255);
+
+        step = N_BYTES-1;
+        if (front->width-delta_x<N_BYTES)
+        {
+            step = front->width-delta_x - 1;
+        }
+
+        size_t front_counter = (delta_y*front->width + delta_x);
+
+        __m128i front_pixel = _mm_loadu_si128((__m128i const *)(&front->pixels[front_counter]));
+        __m128i back_pixel  = _mm_loadu_si128((__m128i const *)(&back->pixels[back_counter]));
+
+        __m128i FRONT_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) front_pixel);
+        __m128i BACK_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) back_pixel);
+
+        front_pixel = _mm_cvtepu8_epi16 (front_pixel);
+        back_pixel = _mm_cvtepu8_epi16 (back_pixel);
+
+        FRONT_PIXEL = _mm_cvtepu8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
+        BACK_PIXEL = _mm_cvtepu8_epi16 (BACK_PIXEL);
+
+    const   __m128i alpha_mask = _mm_setr_epi8(6, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 14, zero_val, 14, zero_val, 14, zero_val,
+        14, zero_val);
+
+        __m128i front_alpha = _mm_shuffle_epi8(front_pixel, alpha_mask);                  // front.a(0,1)
+        __m128i FRONT_ALPHA = _mm_shuffle_epi8(FRONT_PIXEL, alpha_mask);                  // front.a(2,3)
+
+        front_pixel = _mm_mullo_epi16(front_pixel, front_alpha);
+        FRONT_PIXEL = _mm_mullo_epi16(FRONT_PIXEL, FRONT_ALPHA);
+        back_pixel = _mm_mullo_epi16(back_pixel, _mm_sub_epi16 (_255, front_alpha));
+        BACK_PIXEL = _mm_mullo_epi16(BACK_PIXEL, _mm_sub_epi16 (_255, FRONT_ALPHA));
+
+        __m128i sum_low = _mm_add_epi16(front_pixel, back_pixel);
+        __m128i sum_high = _mm_add_epi16(FRONT_PIXEL, BACK_PIXEL);
+
+
+    const   __m128i sum_mask = _mm_setr_epi8(1, 3, 5, 7, 9, 11, 13, 15, zero_val, zero_val, zero_val, zero_val, zero_val, 
+                                                zero_val, zero_val, zero_val);
+
+        sum_low = _mm_shuffle_epi8(sum_low, sum_mask);
+        sum_high = _mm_shuffle_epi8(sum_high, sum_mask);
+        __m128i color = (__m128i)_mm_movelh_ps((__m128)sum_low, (__m128)sum_high); 
+
+        _mm_storeu_si128 ((__m128i*) &(result->pixels[back_counter]), color) ;
+
+    } else
+    {
+        result->pixels[back_counter] = back->pixels[back_counter];
+    }
+
+    return step;
+}
+
+#else
+
+inline int blendingAlgorithm(Img * result, Img * front, Img * back, int delta_x, int delta_y, size_t back_counter)
+{
+
+    if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
+    {
+        unsigned int result_color = 0;
+        size_t front_counter = (delta_y*front->width + delta_x);
+
+        u_int back_pixel = back->pixels[back_counter];
+        u_int front_pixel = front->pixels[front_counter];
+
+        u_char front_alpha = front_pixel>>(3*BYTE);
+        u_char one_color = 0;
+        
+        // printf("%2x ", front_alpha);
+        // printf("RGB: ( ");
+        for(int idx = 0; idx < sizeof(u_int)*BYTE; idx+=BYTE)
+        {
+            one_color = (((((0xFF << idx) & front_pixel) >> idx)*front_alpha 
+                            + (((0xFF << idx) & back_pixel) >> idx) * (0xFF - front_alpha)) )/0xFF;
+            // printf("%2x ", one_color);
+
+            result_color += one_color<<idx; 
+
+        }
+        // printf(")\n");
+        result->pixels[back_counter] = result_color;
+    
+    } else
+    {
+        result->pixels[back_counter] = back->pixels[back_counter];
+    }
+
+    return 1;
+}
+
 #endif
 
-#ifndef SSE
-Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
+Img * alpha_blend(Img *back, Img *front, int x_shift, int y_shift)
 {
     x_shift = abs(back->width - front->width - x_shift);
     // y_shift = back->height - front->height - y_shift;
@@ -144,9 +246,11 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
     Img * result = imageCopyStruct(back, new_color_size);
     pixel tmp = {};
 
+    Clock clock;
+
     for (int yi = 0; yi < result->height; yi++)
     {
-        for(int xi = 0; xi < result->width; xi++)
+        for(int xi = 0; xi < result->width;)
         {
             int delta_x = xi - x_shift;
             int delta_y = yi - y_shift;
@@ -154,39 +258,14 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
             size_t back_counter = yi*back->width + xi;
             unsigned int result_color = 0;
 
-            if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
-            {
-               size_t front_counter = (delta_y*front->width + delta_x);
-   
-                u_int back_pixel = back->pixels[back_counter];
-                u_int front_pixel = front->pixels[front_counter];
-
-                u_char front_alpha = front_pixel>>(3*BYTE);
-                u_char one_color = 0;
-                
-                // printf("%2x ", front_alpha);
-                // printf("RGB: ( ");
-                for(int idx = 0; idx < sizeof(u_int)*BYTE; idx+=BYTE)
-                {
-                    one_color = (((((0xFF << idx) & front_pixel) >> idx)*front_alpha 
-                                    + (((0xFF << idx) & back_pixel) >> idx) * (0xFF - front_alpha)) )/0xFF;
-                    // printf("%2x ", one_color);
-
-                    result_color += one_color<<idx; 
-
-                }
-                // printf(")\n");
-
-            } else
-            {
-                result_color = back->pixels[back_counter];
-            }
-
-            result->pixels[back_counter] = result_color;
-
+            xi+=blendingAlgorithm(result, front, back, delta_x, delta_y, back_counter);
         }
     
     }
+
+    float currentTime = clock.restart().asSeconds();
+    float fps = 1.f / (currentTime);
+    printf("FPS = %g\n", fps);
 
     imageDtor(back);
     imageDtor(front);
@@ -194,177 +273,6 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
     return result;
 
 }
-
-#else  
-Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
-{
-    const size_t N_BYTES = 4;
-    x_shift = abs(back->width - front->width - x_shift);
-    // y_shift = back->height - front->height - y_shift;
-
-    ASSERT(front->length > back->length);
-
-    int16_t new_color_size = MAX(back->color_size, front->color_size);
-
-    Img * result = imageCopyStruct(back, new_color_size);
-    pixel tmp = {};
-
-    for (int yi = 0; yi < result->height; yi++)
-    {
-        for(int xi = 0; xi < result->width; xi++)
-        {
-            int delta_x = xi - x_shift;
-            int delta_y = yi - y_shift;
-
-            size_t back_counter = yi*back->width + xi;
-            unsigned int result_color = 0;
-
-            if ( (0 <= delta_x && delta_x < front->width) && (0 <= delta_y && delta_y < front->height))
-            {
-            
-            const __m128i _0 = _mm_set1_epi8(0);
-            const __m128i _255  = _mm_set1_epi16(255);
-
-                size_t step = N_BYTES-1;
-                if (front->width-delta_x<N_BYTES)
-                {
-                    step = front->width-delta_x - 1;
-                }
-
-                size_t front_counter = (delta_y*front->width + delta_x);
-
-                __m128i front_pixel = _mm_loadu_si128((__m128i const *)(&front->pixels[front_counter]));
-                __m128i back_pixel  = _mm_loadu_si128((__m128i const *)(&back->pixels[back_counter]));
-
-                __m128i FRONT_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) front_pixel);
-                __m128i BACK_PIXEL = (__m128i) _mm_movehl_ps((__m128) _0, (__m128) back_pixel);
-
-                // front_pixel = (__m128i) _mm_movehl_ps((__m128) front_pixel, (__m128) _0);
-                // back_pixel = (__m128i) _mm_movehl_ps((__m128) back_pixel, (__m128) _0);
-
-                // printf("initial:\n");
-                // PRINT_MM_INT(4, front_pixel);
-                // PRINT_MM_INT(4, FRONT_PIXEL);
-                // PRINT_MM_INT(4, back_pixel);
-                // PRINT_MM_INT(4, BACK_PIXEL);
-                // printf("***********************************\n");
-
-                front_pixel = _mm_cvtepu8_epi16 (front_pixel);
-                back_pixel = _mm_cvtepu8_epi16 (back_pixel);
-
-                FRONT_PIXEL = _mm_cvtepu8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
-                BACK_PIXEL = _mm_cvtepu8_epi16 (BACK_PIXEL);
-
-            const   __m128i alpha_mask = _mm_setr_epi8(6, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 14, zero_val, 14, zero_val, 14, zero_val,
-                14, zero_val);
-
-                __m128i front_alpha = _mm_shuffle_epi8(front_pixel, alpha_mask);                  // front.a(0,1)
-                __m128i FRONT_ALPHA = _mm_shuffle_epi8(FRONT_PIXEL, alpha_mask);                  // front.a(2,3)
-                
-                int drawing_flag = 0;
-                // drawing_flag += _mm_movemask_epi8(front_alpha) & _mm_movemask_epi8(FRONT_ALPHA);
-
-                if(drawing_flag)
-                {
-                    PRINT_MM_INT(4, front_pixel);
-                    PRINT_MM_INT(4, FRONT_PIXEL);
-                    PRINT_MM_INT(4, back_pixel);
-                    PRINT_MM_INT(4, BACK_PIXEL);
-                    printf("***********************************\n");
-                    printf("Get alpha\n");
-                    PRINT_MM_INT(4, front_alpha);
-                    PRINT_MM_INT(4, FRONT_ALPHA);
-                    printf("***********************************\n");
-
-                }
-
-                front_pixel = _mm_mullo_epi16(front_pixel, front_alpha);
-                FRONT_PIXEL = _mm_mullo_epi16(FRONT_PIXEL, FRONT_ALPHA);
-                back_pixel = _mm_mullo_epi16(back_pixel, _mm_sub_epi16 (_255, front_alpha));
-                BACK_PIXEL = _mm_mullo_epi16(BACK_PIXEL, _mm_sub_epi16 (_255, FRONT_ALPHA));
-
-                if(drawing_flag)
-                {
-                    printf("After mul\n");
-                    PRINT_MM_INT(4, front_pixel);
-                    PRINT_MM_INT(4, FRONT_PIXEL);
-                    PRINT_MM_INT(4, back_pixel);
-                    PRINT_MM_INT(4, BACK_PIXEL);
-                    printf("***********************************\n");
-                }
-
-                __m128i sum_low = _mm_add_epi16(front_pixel, back_pixel);
-                __m128i sum_high = _mm_add_epi16(FRONT_PIXEL, BACK_PIXEL);
-
-                if(drawing_flag)
-                {
-                    PRINT_MM_INT(4, front_pixel);
-                    printf("\t\t\t+\n");
-                    PRINT_MM_INT(4, back_pixel);
-                    printf("\t\t\t=\n");
-                    PRINT_MM_INT(4, sum_low);
-                    printf("***********************************\n");
-                    PRINT_MM_INT(4, FRONT_PIXEL);
-                    printf("\t\t\t+\n");
-                    PRINT_MM_INT(4, BACK_PIXEL);
-                    printf("\t\t\t=\n");
-                    PRINT_MM_INT(4, sum_high);
-                    printf("***********************************\n");
-                }
-
-            const   __m128i sum_mask = _mm_setr_epi8(1, 3, 5, 7, 9, 11, 13, 15, zero_val, zero_val, zero_val, zero_val, zero_val, 
-                                                        zero_val, zero_val, zero_val);
-
-                sum_low = _mm_shuffle_epi8(sum_low, sum_mask);
-                sum_high = _mm_shuffle_epi8(sum_high, sum_mask);
-                __m128i color = (__m128i)_mm_movelh_ps((__m128)sum_low, (__m128)sum_high); 
-
-                if(drawing_flag)
-                {
-                    PRINT_MM_INT(4, sum_low);   
-                    PRINT_MM_INT(4, sum_high);
-                    PRINT_MM_INT(4, color);
-                    printf("***********************************\n");
-                }
-
-                // u_char one_color = 0;
-                // // printf("%2x ", front_alpha);
-                // // printf("RGB: ( ");
-                // for(int counter = 0; counter < sizeof(u_int); counter++)
-                // {
-                //     one_color = ((u_char *)&color)[BYTE - 1 - counter];
-                //     // printf("%2x ", one_color);
-                //     result_color += one_color<<counter*BYTE; 
-                // }
-                // _mm_store_si128((__m128i *)&result->pixels[back_counter], color);
-                // printf(")\n");
-                _mm_storeu_si128 ((__m128i*) &(result->pixels[back_counter]), color) ;
-
-                xi+=step;
-
-                if(drawing_flag)
-                {
-                    sleep(1);
-                }
-
-            } else
-            {
-                result->pixels[back_counter] = back->pixels[back_counter];
-            }
-
-
-        }
-    
-    }
-
-    imageDtor(back);
-    imageDtor(front);
-
-    return result;
-
-}
-
-#endif
 
 int saveAsBMP(Img *result, const char *result_file_name)
 {

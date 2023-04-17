@@ -1,5 +1,5 @@
 CC 		:= g++
-O_FLAGS := -Ofast
+O_FLAGS := -O3
 
 OBJ_DIR := ./obj/
 LOGS_DIR:= ./logs/	
