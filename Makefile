@@ -6,7 +6,7 @@ LOGS_DIR:= ./logs/
 SRC_DIR	:= ./
 I_FLAG 	:= -I/usr/include/
 SFML_FLAGS := -lsfml-graphics -lsfml-audio -lsfml-window -lsfml-system
-CFLAGS     := -Wno-format -g -fsanitize=address -mavx
+CFLAGS     := -Wno-format -Wno-unused-result -g -fsanitize=address -mavx
 CFLAGS_NO_SANITIZER := -Wno-format -g
 
 DRAW_MODULE := $(OBJ_DIR)alpha.o

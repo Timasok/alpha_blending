@@ -242,12 +242,12 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                 // front_pixel = (__m128i) _mm_movehl_ps((__m128) front_pixel, (__m128) _0);
                 // back_pixel = (__m128i) _mm_movehl_ps((__m128) back_pixel, (__m128) _0);
 
-                printf("initial:\n");
-                PRINT_MM_INT(4, front_pixel);
-                PRINT_MM_INT(4, FRONT_PIXEL);
-                PRINT_MM_INT(4, back_pixel);
-                PRINT_MM_INT(4, BACK_PIXEL);
-                printf("***********************************\n");
+                // printf("initial:\n");
+                // PRINT_MM_INT(4, front_pixel);
+                // PRINT_MM_INT(4, FRONT_PIXEL);
+                // PRINT_MM_INT(4, back_pixel);
+                // PRINT_MM_INT(4, BACK_PIXEL);
+                // printf("***********************************\n");
 
                 front_pixel = _mm_cvtepu8_epi16 (front_pixel);
                 back_pixel = _mm_cvtepu8_epi16 (back_pixel);
@@ -255,14 +255,14 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                 FRONT_PIXEL = _mm_cvtepu8_epi16 (FRONT_PIXEL);                              // сделать воздух более разреженым
                 BACK_PIXEL = _mm_cvtepu8_epi16 (BACK_PIXEL);
 
-            const   __m128i alpha_mask = _mm_setr_epi8( 14, zero_val, 14, zero_val, 14, zero_val,
-                                                     14, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 6, zero_val);
+            const   __m128i alpha_mask = _mm_setr_epi8(6, zero_val, 6, zero_val, 6, zero_val, 6, zero_val, 14, zero_val, 14, zero_val, 14, zero_val,
+                14, zero_val);
 
                 __m128i front_alpha = _mm_shuffle_epi8(front_pixel, alpha_mask);                  // front.a(0,1)
                 __m128i FRONT_ALPHA = _mm_shuffle_epi8(FRONT_PIXEL, alpha_mask);                  // front.a(2,3)
                 
                 int drawing_flag = 0;
-                drawing_flag += _mm_movemask_epi8(front_alpha) & _mm_movemask_epi8(FRONT_ALPHA);
+                // drawing_flag += _mm_movemask_epi8(front_alpha) & _mm_movemask_epi8(FRONT_ALPHA);
 
                 if(drawing_flag)
                 {
@@ -271,17 +271,11 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                     PRINT_MM_INT(4, back_pixel);
                     PRINT_MM_INT(4, BACK_PIXEL);
                     printf("***********************************\n");
+                    printf("Get alpha\n");
                     PRINT_MM_INT(4, front_alpha);
                     PRINT_MM_INT(4, FRONT_ALPHA);
                     printf("***********************************\n");
 
-                }
-
-                if(drawing_flag)
-                {
-                    PRINT_MM_INT(4, front_pixel);
-                    PRINT_MM_INT(4, FRONT_PIXEL);
-                    printf("***********************************\n");
                 }
 
                 front_pixel = _mm_mullo_epi16(front_pixel, front_alpha);
@@ -289,31 +283,45 @@ Img * alpha_blend(Img *front, Img *back, int x_shift, int y_shift)
                 back_pixel = _mm_mullo_epi16(back_pixel, _mm_sub_epi16 (_255, front_alpha));
                 BACK_PIXEL = _mm_mullo_epi16(BACK_PIXEL, _mm_sub_epi16 (_255, FRONT_ALPHA));
 
+                if(drawing_flag)
+                {
+                    printf("After mul\n");
+                    PRINT_MM_INT(4, front_pixel);
+                    PRINT_MM_INT(4, FRONT_PIXEL);
+                    PRINT_MM_INT(4, back_pixel);
+                    PRINT_MM_INT(4, BACK_PIXEL);
+                    printf("***********************************\n");
+                }
+
                 __m128i sum_low = _mm_add_epi16(front_pixel, back_pixel);
                 __m128i sum_high = _mm_add_epi16(FRONT_PIXEL, BACK_PIXEL);
 
                 if(drawing_flag)
                 {
                     PRINT_MM_INT(4, front_pixel);
-                    PRINT_MM_INT(4, FRONT_PIXEL);
+                    printf("\t\t\t+\n");
                     PRINT_MM_INT(4, back_pixel);
-                    PRINT_MM_INT(4, BACK_PIXEL);
-                    printf("***********************************\n");
+                    printf("\t\t\t=\n");
                     PRINT_MM_INT(4, sum_low);
+                    printf("***********************************\n");
+                    PRINT_MM_INT(4, FRONT_PIXEL);
+                    printf("\t\t\t+\n");
+                    PRINT_MM_INT(4, BACK_PIXEL);
+                    printf("\t\t\t=\n");
                     PRINT_MM_INT(4, sum_high);
                     printf("***********************************\n");
                 }
 
-            const   __m128i sum_mask = _mm_setr_epi8(zero_val, zero_val, zero_val, zero_val, zero_val, 
-                                                        zero_val, zero_val, zero_val, 15, 13, 11, 9, 7, 5, 3, 1);
+            const   __m128i sum_mask = _mm_setr_epi8(1, 3, 5, 7, 9, 11, 13, 15, zero_val, zero_val, zero_val, zero_val, zero_val, 
+                                                        zero_val, zero_val, zero_val);
 
                 sum_low = _mm_shuffle_epi8(sum_low, sum_mask);
                 sum_high = _mm_shuffle_epi8(sum_high, sum_mask);
-                __m128i color = (__m128i)_mm_movehl_ps((__m128)sum_low, (__m128)sum_high); 
+                __m128i color = (__m128i)_mm_movelh_ps((__m128)sum_low, (__m128)sum_high); 
 
                 if(drawing_flag)
                 {
-                    PRINT_MM_INT(4, sum_low);
+                    PRINT_MM_INT(4, sum_low);   
                     PRINT_MM_INT(4, sum_high);
                     PRINT_MM_INT(4, color);
                     printf("***********************************\n");
