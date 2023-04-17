@@ -1,6 +1,9 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Graphics/RectangleShape.hpp>
+// #include <SFML/Clock.hpp>
+
+using namespace sf;
 
 #define SSE
 // #define DEBUG
@@ -37,7 +40,7 @@ struct Img
            "\tvar name: %s"                                                             \
            "\tsize: (%dx%d)\n"                                                          \
            "\tpixels: %d"                                                               \
-           "\tbytes_in_one: %lu\n"                                                      \
+           "\tbytes_in_one: %lu\n\n"                                                    \
             ,#image, image->width, image->height, image->length, image->color_size)     \
 
 
